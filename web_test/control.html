@@ -11,23 +11,76 @@
             margin: 0;
             padding: 0;
         }
+        
+        header.top_menu {
+            display: flex;
+            flex-wrap: nowrap;
+            flex-direction: row; /*phone: column*/
+        }
+        
+        header > div.menu_point {
+            display: flex;
+            border-bottom: 2px solid black;
+            border-right: 2px solid black;
+            flex-grow: 1;
+            height: 3rem;
+            justify-content: center;
+            align-items: center;
+        }
 
+        header > div.menu_point:last-child {
+            border-right: none;
+        }
+        
+        header > div.menu_point.active {
+            color: white;
+            background: hsl(252, 67%, 20%);
+        }
+
+        header > div.menu_point:hover,
+        header > div.menu_point.active:hover {
+            color: white;
+            background: hsl(252, 67%, 10%);
+        }
+
+        header > div.menu_point > * {
+            pointer-events: none;
+            user-select: none;
+        }
+
+        section {
+            height: 0px;
+            overflow: hidden;
+        }
+
+        section.active {
+            width: initial;
+            height: initial;
+            overflow: initial;
+        }
+        
         input.color_picker {
             width: 8rem;
             padding: 0.25rem;
         }
+
+        @media (max-width: 320px) {
+            header.top_menu {
+                flex-direction: column;
+            }
+        }
     </style>
 </head>
 <body>
-    <header class="menu">
-        <div class="menu_point">
-            <h3 id="single_mode">Feste Farbe</h3>
+    <header class="top_menu">
+        <div class="menu_point" id="single_mode">
+            <h3>Feste Farbe</h3>
         </div>
-        <div class="menu_point">
-            <h3 id="effect_mode">Muster</h3>
+        <div class="menu_point" id="effect_mode">
+            <h3>Muster</h3>
         </div>
-        <div class="menu_point">
-            <h3 id="game_mode">Spieler-Modus</h3>
+        <div class="menu_point" id="game_mode">
+            <h3>Spieler-Modus</h3>
         </div>
     </header>
     <main>
@@ -35,7 +88,7 @@
             <div class="section_title">
                 <h1>Feste Farbe</h1>
             </div>
-            <div class="color_choice_all">
+            <div class="color_choice_all" id="single_mode_cca">
                 <div class="color_choice">
                     <div class="color_choice_slider">
                         <div class="slider slider_r">
@@ -87,7 +140,7 @@
                             <label class="einheit">LED/s</label>
                         </div>
                         <div class="option">
-                            <div class="color_choice_all">
+                            <div class="color_choice_all" id="effect_choice_options_0_cca">
                                 <div class="color_choice">
                                     <div class="color_choice_slider">
                                         <div class="slider slider_r">
@@ -122,7 +175,7 @@
                     </div>
                     <div class="option">
                         <div class="mfk mfk_0">
-                            <div class="color_choice_all">
+                            <div class="color_choice_all" id="effect_choice_options_1_cca_0">
                                 <div class="color_choice">
                                     <div class="color_choice_slider">
                                         <div class="slider slider_r">
@@ -146,7 +199,7 @@
                             </div>
                         </div>
                         <div class="mfk mfk_1">
-                            <div class="color_choice_all">
+                            <div class="color_choice_all" id="effect_choice_options_1_cca_1">
                                 <div class="color_choice">
                                     <div class="color_choice_slider">
                                         <div class="slider slider_r">
@@ -170,7 +223,7 @@
                             </div>
                         </div>
                         <div class="mfk mfk_2">
-                            <div class="color_choice_all">
+                            <div class="color_choice_all" id="effect_choice_options_1_cca_2">
                                 <div class="color_choice">
                                     <div class="color_choice_slider">
                                         <div class="slider slider_r">
@@ -258,25 +311,19 @@
         Inline-JS, to minimize the amount of web-related-files
     -->
     <script>
+        cl = console.log;
+
+        // Utility Functions
         const HOST = "127.0.0.1";
         const PORT = "9001";
         let last_send = 0;
-
-        let SLIDER_RED = 255;
-        let SLIDER_GREEN = 0;
-        let SLIDER_BLUE = 0;
-
-        const slider_r = document.getElementById("color_red");
-        const slider_g = document.getElementById("color_green");
-        const slider_b = document.getElementById("color_blue");
-
-        const color_picker = document.getElementsByClassName("color_picker")[0];
 
         function send_color(color_code) {
             if (Date.now() - last_send < 300 /*ms*/) return;
 
             last_send = Date.now();
 
+            // TODO: Proper Color-Send, including positions, etc
             let full_url = `http://${HOST}:${PORT}/color.html?color=${color_code.slice(-6)}`;
 
             // fetch(full_url);
@@ -286,43 +333,117 @@
             return (("0" + i.toString(16)).slice(-2));
         }
 
-        color_picker.addEventListener("change", e => {
-            let color_string = e.target.value.slice(-6);
 
-            SLIDER_RED = parseInt(color_string.slice(0, 2), 16);
-            slider_r.value = SLIDER_RED;
+        // Menu Functionality
+        const MENU_SECTIONS = new Map();
+        let ACTIVE_MENU_POINT = undefined;
 
-            SLIDER_GREEN = parseInt(color_string.slice(2, 4), 16);
-            slider_g.value = SLIDER_GREEN;
+        // Setup für die Menüpunkte und deren zugehörige Sections
+        // ->   Klick auf Menüpunkt setzt diesen Menüpunkt und seine zugehörige Section auf "active",
+        //      während die zuvor aktive Menü-Section-Combo den "active"-Status / die "active"-Klasse verliert
+        for (const menu_point of document.querySelectorAll("header > div.menu_point"))
+        {
+            cl(menu_point);
+            const section = document.getElementById(menu_point.id + "_section");
+            MENU_SECTIONS.set(menu_point, section);
+
+            if (!ACTIVE_MENU_POINT) {
+                ACTIVE_MENU_POINT = menu_point;
+
+                menu_point.classList.add("active");
+                section.classList.add("active");
+            }
+
+            menu_point.addEventListener("click", e => {
+                if (e.target == ACTIVE_MENU_POINT) return;
+
+                if (ACTIVE_MENU_POINT)
+                {
+                    ACTIVE_MENU_POINT.classList.remove("active");
+                    MENU_SECTIONS.get(ACTIVE_MENU_POINT).classList.remove("active");
+                }
+
+                e.target.classList.add("active");
+                MENU_SECTIONS.get(e.target).classList.add("active");
+
+                ACTIVE_MENU_POINT = e.target;
+            });
+        }
+
+        cl("MENU_SECTIONS");  // DEBUG
+        cl(MENU_SECTIONS);  // DEBUG
+
+
+        // Color-Choices Functionality
+        const COLOR_CHOICES = [];
+
+        // Setup für die Color-Slider-Picker-Combo
+        // ->   Wenn ein Slider angepasst wird, muss sich der Color-Picker anpassen,
+        //      wenn der Color-Picker sich ändert, müssen sich die Slider anpassen
+        for (const color_all of document.querySelectorAll(".color_choice_all"))
+        {
+            const color_picker = color_all.querySelector(".color_choice_full").querySelector("input.color_picker");
+            const slider_r = color_all.querySelector("div.color_choice_slider > div.slider_r > input.single_color_slider");
+            const slider_g = color_all.querySelector("div.color_choice_slider > div.slider_g > input.single_color_slider");
+            const slider_b = color_all.querySelector("div.color_choice_slider > div.slider_b > input.single_color_slider");
+
+            COLOR_CHOICES.push({
+                "c": color_picker,
+                "r": slider_r,
+                "g": slider_g,
+                "b": slider_b
+            });
+
+            color_picker.addEventListener("change", e =>
+            {
+                const clr_all = COLOR_CHOICES.filter(o => o.c == e.target)[0];
+
+                let color_string = e.target.value.slice(-6);
+
+                let red = parseInt(color_string.slice(0, 2), 16);
+                clr_all.r.value = red;
+
+                let green = parseInt(color_string.slice(2, 4), 16);
+                clr_all.g.value = green;
+                
+                let blue = parseInt(color_string.slice(4), 16);
+                clr_all.b.value = blue;
+            });
+
+            slider_r.addEventListener("input", e => {
+                const clr_all = COLOR_CHOICES.filter(o => o.r == e.target)[0];
+
+                clr_all.c.value = `#${toHex(parseInt(clr_all.r.value, 10))}${toHex(parseInt(clr_all.g.value, 10))}${toHex(parseInt(clr_all.b.value, 10))}`;
+            });
+
+            slider_g.addEventListener("input", e => {
+                const clr_all = COLOR_CHOICES.filter(o => o.g == e.target)[0];
+
+                clr_all.c.value = `#${toHex(parseInt(clr_all.r.value, 10))}${toHex(parseInt(clr_all.g.value, 10))}${toHex(parseInt(clr_all.b.value, 10))}`;
+            });
+
+            slider_b.addEventListener("input", e => {
+                const clr_all = COLOR_CHOICES.filter(o => o.b == e.target)[0];
+
+                clr_all.c.value = `#${toHex(parseInt(clr_all.r.value, 10))}${toHex(parseInt(clr_all.g.value, 10))}${toHex(parseInt(clr_all.b.value, 10))}`;
+            });
+
+            slider_r.addEventListener("change", e => {
+                const clr_all = COLOR_CHOICES.filter(o => o.r == e.target)[0];
+
+                send_color(clr_all.c.value);
+            });
+
+            slider_g.addEventListener("change", e => {
+                const clr_all = COLOR_CHOICES.filter(o => o.g == e.target)[0];
+
+                send_color(clr_all.c.value);
+            });
             
-            SLIDER_BLUE = parseInt(color_string.slice(4), 16);
-            slider_b.value = SLIDER_BLUE;
+            slider_b.addEventListener("change", e => {
+                const clr_all = COLOR_CHOICES.filter(o => o.b == e.target)[0];
 
-            send_color(e.target.value);
-        })
-
-
-        slider_r.addEventListener("input", e => {
-            SLIDER_RED = parseInt(e.target.value);
-
-            color_picker.value = `#${toHex(SLIDER_RED)}${toHex(SLIDER_GREEN)}${toHex(SLIDER_BLUE)}`;
-        });
-
-        slider_g.addEventListener("input", e => {
-            SLIDER_GREEN = parseInt(e.target.value);
-
-            color_picker.value = `#${toHex(SLIDER_RED)}${toHex(SLIDER_GREEN)}${toHex(SLIDER_BLUE)}`;
-        });
-
-        slider_b.addEventListener("input", e => {
-            SLIDER_BLUE = parseInt(e.target.value);
-
-            color_picker.value = `#${toHex(SLIDER_RED)}${toHex(SLIDER_GREEN)}${toHex(SLIDER_BLUE)}`;
-        });
-
-        for (const scs of [slider_r, slider_g, slider_b]) {
-            scs.addEventListener("change", e => {
-                send_color(color_picker.value);
+                send_color(clr_all.c.value);
             });
         }
     </script>
