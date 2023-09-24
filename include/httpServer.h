@@ -4,13 +4,14 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include "webPage.h"
-#include "commands.h"
+#include "effects.h"
 
 class httpServer {
   private:
     WiFiServer server;
     const char* pSsid;
     const char* pPass;
+    int LED_Max;
 
   public:
     httpServer(const char* wifiSsid, const char* wifiPass) {
@@ -22,10 +23,12 @@ class httpServer {
       server.close();
     }
 
-    void initializeAndStart() {
+    void initializeAndStart(int LED_strip_max_length) {
       WiFi.mode(WIFI_STA);
       WiFi.begin(pSsid, pPass);
       server = WiFiServer(80);
+
+      LED_Max = LED_strip_max_length;
 
       if (Serial) {
         Serial.print("This boards MAC-Address is ");
@@ -49,8 +52,8 @@ class httpServer {
       server.begin();
     }
 
-    int serve() {
-      int returnVal = -1;
+    Effect* serve() {
+      static Effect* retVal = NULL;
       String header = "";
       unsigned long curTime = millis();
       unsigned long prevTime = 0;
@@ -70,55 +73,41 @@ class httpServer {
 
             if (c == '\n') {
               if (currentLine.length() == 0) {
-                Serial.println("header from httpServer.serve:");
-                Serial.println(header);
-                Serial.println();
+                // Serial.println("header from httpServer.serve:");
+                // Serial.println(header);
+                // Serial.println();
 
                 String POSTorGET = header.substring(0, header.indexOf(' '));
-                Serial.println("POSTorGET:");
-                Serial.println(POSTorGET);
-                Serial.println();
+                // Serial.println("POSTorGET:");
+                // Serial.println(POSTorGET);
+                // Serial.println();
 
                 if (POSTorGET.startsWith("POST")) {
+                  String body = client.readString();
+                  // Serial.println("POST-Body:");
+                  // Serial.println(body);
+
                   Serial.println("Completing POST-request.");
-                  Serial.println();
+                  // Serial.println();
                   
                   client.println("HTTP/1.1 202ACCEPTED");
                   client.println("Connection: close");
                   client.println();
 
-                  String cmd = header.substring(header.indexOf(' ') + 1, header.lastIndexOf(' '));
-                  Serial.println("cmd:");
-                  Serial.println(cmd);
-                  Serial.println();
-
-                  cmd.toLowerCase();
-                  if (cmd.startsWith("/cmd1")) {
-                    returnVal = enum_commands::next;
-                    Serial.println("in cmd1");
-                    Serial.println();
-                  } else if (cmd.startsWith("/cmd2")) {
-                    returnVal = enum_commands::previous;
-                    Serial.println("in cmd1");
-                    Serial.println();
-                  } else if (cmd.startsWith("/cmd3")) {
-                    returnVal = enum_commands::circle;
-                    Serial.println("in cmd1");
-                    Serial.println();
-                  }
+                  retVal = get_effect_from_JSON(body, LED_Max);
 
                   break;
 
                 } else {
-                  Serial.println("Sending page to Client.");
-                  Serial.println();
+                  // Serial.println("Sending page to Client.");
+                  // Serial.println();
 
                   client.println("HTTP/1.1 200OK");
                   client.println("Content-type: text/html");
                   client.println("Connection: close");
                   client.println();
 
-                  client.print(webpage);
+                  client.print(webpage1 + WiFi.localIP().toString() + webpage2);
                   client.println();
 
                   break;
@@ -136,7 +125,7 @@ class httpServer {
         client.stop();
       }
 
-      return returnVal;
+      return retVal;
     }
 };
 

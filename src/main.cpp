@@ -2,7 +2,7 @@
 #include <FastLED.h>
 #include <esp_wifi.h>
 #include "httpServer.h"
-#include "commands.h"
+#include "effects.h"
 
 // LED Setup
 #define NUM_LEDS      15
@@ -14,7 +14,6 @@
 // global Vars
 CRGB g_LEDs[NUM_LEDS] = {0};
 httpServer g_HTTP_SERVER("Byakuya", "03263812083233064562");
-int displayMode = enum_commands::noChoice;
 
 // Prototypes
 void DisplayLEDs();
@@ -32,7 +31,7 @@ void setup() {
   }
 
   // WiFi setup
-  g_HTTP_SERVER.initializeAndStart();
+  g_HTTP_SERVER.initializeAndStart(NUM_LEDS);
 
   // FastLED setup
   pinMode(LED_DATA_OUT, OUTPUT);
@@ -43,11 +42,15 @@ void setup() {
 }
 
 void loop() {
-  int displayModeBuffer = g_HTTP_SERVER.serve();
-  if (displayModeBuffer > enum_commands::noChoice && displayModeBuffer < enum_commands::outOfScope)
-    displayMode = displayModeBuffer;
+  Effect* effect = g_HTTP_SERVER.serve();
 
-  DisplayLEDs();
+  if(effect == NULL) {
+    DisplayLEDs();
+  }
+  else {
+    effect->display_LEDs(g_LEDs);
+  }
+
   FastLED.show();
   
   delay(100);
@@ -57,47 +60,11 @@ void DisplayLEDs() {
   static int lastStart = 0;
   static int length = 3;
   
-  switch(displayMode) {
-    case enum_commands::next:
-      for (int i = lastStart; i < lastStart + length; i++) {
-        g_LEDs[i % NUM_LEDS] = CRGB::Black;
-      }
-    
-      for (int i = lastStart + length; i < lastStart + 2 * length; i++) {
-        g_LEDs[i % NUM_LEDS] = CRGB::Yellow;
-      }
+  g_LEDs[lastStart] = CRGB::Black;
 
-      lastStart %= NUM_LEDS;
-
-      break;
-
-    case enum_commands::previous:
-      for (int i = lastStart; i < lastStart + length; i++) {
-        g_LEDs[i % NUM_LEDS] = CRGB::Black;
-      }
-
-      lastStart -= length;
-      if (lastStart < 0)
-        lastStart = NUM_LEDS - lastStart;
-    
-      for (int i = lastStart; i < lastStart + length; i++) {
-        g_LEDs[i % NUM_LEDS] = CRGB::Yellow;
-      }
-
-      lastStart %= NUM_LEDS;
-
-      break;
-
-    case enum_commands::circle:
-    default:
-      g_LEDs[lastStart] = CRGB::Black;
-    
-      for (int i = ++lastStart; i < lastStart + length; i++) {
-        g_LEDs[i % NUM_LEDS] = CRGB::Yellow;
-      }
-
-      lastStart %= NUM_LEDS;
-
-      break;
+  for (int i = ++lastStart; i < lastStart + length; i++) {
+    g_LEDs[i % NUM_LEDS] = CRGB::Yellow;
   }
+
+  lastStart %= NUM_LEDS;
 }
