@@ -6,6 +6,8 @@
 #include "webPage.h"
 #include "effects.h"
 
+#include <chrono>
+
 class httpServer {
   private:
     WiFiServer server;
@@ -94,7 +96,21 @@ class httpServer {
                   client.println("Connection: close");
                   client.println();
 
+                  using std::chrono::high_resolution_clock;
+                  using std::chrono::duration_cast;
+                  using std::chrono::duration;
+                  using std::chrono::milliseconds;
+
+                  auto t1 = high_resolution_clock::now();
                   retVal = get_effect_from_JSON(body, LED_Max);
+                  auto t2 = high_resolution_clock::now();
+
+                  /* Getting number of milliseconds as an integer. */
+                  int ms_int = duration_cast<milliseconds>(t2 - t1).count();
+                  char time[100];
+                  itoa(ms_int, time, 10);
+                  Serial.println("Dauer get_effect_from_JSON:");
+                  Serial.println(time);
 
                   break;
 

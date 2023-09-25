@@ -30,4 +30,18 @@ std::vector<String> string_split(String to_split, char split) {
     return retVal;
 }
 
+uint32_t get_color_from_options_kv(String color_kv) {
+    String clr = string_split(color_kv, ':')[1];
+    clr = clr.substring(2, clr.length()-1);
+    
+    return strtoul(clr.c_str(), NULL, 16);
+}
+
+int get_int_from_options_kv(String kv) {
+    String to_int = string_split(kv, ':')[1];
+    to_int = to_int.substring(1, to_int.length()-1);
+
+    return atoi(to_int.c_str());
+}
+
 #endif

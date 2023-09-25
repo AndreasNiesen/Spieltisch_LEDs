@@ -21,9 +21,7 @@ class Single_Color : public virtual Effect {
     public:
         Single_Color(std::vector<String> options, int led_max_num) {
             // options[0] is mode, options[1] is color
-            String clr = string_split(options[1], ':')[1];
-            String test = clr.substring(2, clr.length()-1);
-            color = strtoul(test.c_str(), NULL, 16);
+            color = get_color_from_options_kv(options[1]);
 
             led_max = led_max_num;
         }
@@ -35,8 +33,7 @@ class Single_Color : public virtual Effect {
         }
 
         void reset(std::vector<String> options) {
-            String clr = string_split(options[1], ':')[1];
-            color = strtoul(clr.substring(2, clr.length()-1).c_str(), NULL, 16);
+            color = get_color_from_options_kv(options[1]);
         }
 
         String name() {
@@ -50,19 +47,34 @@ class Single_Color : public virtual Effect {
 
 
 class Single_Color_Cycle : public virtual Effect {
-    void display_LEDs(CRGB* g_LEDs) {
-        int c = 0;
-        c++;
-    }
+    public:
+        Single_Color_Cycle(std::vector<String> options, int led_max_num) {
+            // options[0] is mode, [1] is submode, [2] is color, [3] is length, [4] is speed
+            color = get_color_from_options_kv(options[2]);
+            led_max = led_max_num;
+            led_len = get_int_from_options_kv(options[3]);
+            led_spd = get_int_from_options_kv(options[4]);
+        }
 
-    void reset(std::vector<String> options) {
-        int c = 0;
-        c++;
-    }
+        void display_LEDs(CRGB* g_LEDs) {
+            int c = 0;
+            c++;
+        }
 
-    String name() {
-        return "Single_Color_Cycle";
-    }
+        void reset(std::vector<String> options) {
+            int c = 0;
+            c++;
+        }
+
+        String name() {
+            return "Single_Color_Cycle";
+        }
+
+    private:
+        uint32_t color;
+        int led_max;
+        int led_len;
+        int led_spd;  // Fortschritt LEDs pro Tick
 };
 
 
@@ -103,7 +115,7 @@ Effect* get_effect_from_JSON(String options, int led_max_len) {
         String sub_eff = string_split(kv[1], ':')[1];
         
         if(sub_eff == "\"0\"") {
-            retVal = new Single_Color_Cycle();
+            retVal = new Single_Color_Cycle(kv, led_max_len);
         }
         else if(sub_eff == "\"1\"") {
             retVal = new Multi_Color_Cycle();
